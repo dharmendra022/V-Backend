@@ -36,7 +36,7 @@ if (allowedOrigins) {
   );
   log(`CORS enabled for origins: ${allowedOrigins.join(", ")}`);
 }
-// ss
+// sss
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
