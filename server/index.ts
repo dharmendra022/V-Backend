@@ -1,6 +1,7 @@
 // Allow self-signed certificates for Supabase pooler connections
 // This is required for Supabase's PgBouncer pooler (Transaction mode on port 6543)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+import "dotenv/config";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
@@ -11,32 +12,42 @@ const app = express();
 
 // Configure CORS - allow requests from client dev server when running separately
 const isSeparatedMode = process.env.SEPARATE_CLIENT === "true";
-const allowedOrigins = isSeparatedMode 
+const allowedOrigins = isSeparatedMode
   ? ["http://localhost:5173", "http://127.0.0.1:5173"]
   : undefined; // In integrated mode, same origin, no CORS needed
 
 if (allowedOrigins) {
-  app.use(cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true, // Allow cookies and authorization headers
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  }));
-  log(`CORS enabled for origins: ${allowedOrigins.join(', ')}`);
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      credentials: true, // Allow cookies and authorization headers
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    })
+  );
+  log(`CORS enabled for origins: ${allowedOrigins.join(", ")}`);
 }
 
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Backend is running 🚀",
+    time: new Date().toISOString(),
+  });
+});
+
 // Increase body size limit to 50MB for handling image uploads and large forms
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -72,7 +83,7 @@ app.use((req, res, next) => {
   // Serve uploaded files from the uploads directory
   const uploadsDir = process.env.PUBLIC_OBJECT_SEARCH_PATHS?.split(",")[0];
   if (uploadsDir) {
-    app.use('/uploads', express.static(uploadsDir));
+    app.use("/uploads", express.static(uploadsDir));
     log(`Serving uploads from: ${uploadsDir}`);
   }
 
@@ -90,9 +101,15 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   // Skip Vite setup if SEPARATE_CLIENT=true (for running client separately)
-  if (app.get("env") === "development" && process.env.SEPARATE_CLIENT !== "true") {
+  if (
+    app.get("env") === "development" &&
+    process.env.SEPARATE_CLIENT !== "true"
+  ) {
     await setupVite(app, server);
-  } else if (app.get("env") === "development" && process.env.SEPARATE_CLIENT === "true") {
+  } else if (
+    app.get("env") === "development" &&
+    process.env.SEPARATE_CLIENT === "true"
+  ) {
     // When running separately, just serve API routes
     log("Running server only mode (client served separately)");
   } else {
@@ -103,7 +120,7 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
